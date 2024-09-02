@@ -38,14 +38,14 @@ class Chatbox {
 
     onSendButton(chatbox) {
         var textField = chatbox.querySelector('input');
-        let text1 = textField.value;
+        let text1 = textField.value
         if (text1 === "") {
             return;
         }
-    
+
         let msg1 = { name: "User", message: text1 };
         this.messages.push(msg1);
-    
+
         fetch('http://127.0.0.1:8000/query/', { // Change the URL to match your FastAPI endpoint
             method: 'POST',
             body: JSON.stringify({ query: text1 }), // Adjust the body to match the backend's expected format

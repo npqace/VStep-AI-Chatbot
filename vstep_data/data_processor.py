@@ -4,13 +4,13 @@ from uuid import uuid4
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams, PointStruct
 import google.generativeai as genai
-from google.generativeai import configure, embed_content
-import requests
-from bs4 import BeautifulSoup
+from google.generativeai import GenerativeModel, configure, embed_content
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import os
 from dotenv import load_dotenv
+from time import sleep
+import re
 
 # Load environment variables
 load_dotenv()
@@ -21,9 +21,11 @@ GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 # Initialize the Gemini API
 configure(api_key=GEMINI_API_KEY)
 
+# Initialize Gemini model
+gemini_model = GenerativeModel('gemini-pro')
+
 # Initialize the Qdrant client
 vector_db = QdrantClient(":memory:")  # In-memory instance for testing
-
 
 class ChatbotAI:
     def __init__(self, excel_path):
@@ -66,7 +68,6 @@ class ChatbotAI:
             user_question)
         return most_similar_question['Answer'], language
 
-
 def create_collection():
     vector_db.create_collection(
         collection_name="vstep_data_collection",
@@ -74,36 +75,85 @@ def create_collection():
         vectors_config=VectorParams(size=768, distance=Distance.DOT),
     )
 
-
-def fetch_online_vstep_info(query):
-    search_url = f"https://www.google.com/search?q=VSTEP+{query.replace(' ', '+')}"
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
-
-    try:
-        response = requests.get(search_url, headers=headers)
-        soup = BeautifulSoup(response.text, 'html.parser')
-
-        # Extract snippets from search results
-        snippets = soup.find_all('div', class_='g')
-        relevant_text = []
-
-        for snippet in snippets[:3]:  # Consider top 3 results
-            title = snippet.find('h3', class_='r')
-            content = snippet.find('div', class_='s')
-            if title and content:
-                relevant_text.append(
-                    f"{title.get_text()} - {content.get_text()}")
-
-        return "\n".join(relevant_text)
-    except Exception as e:
-        print(f"Error fetching online information: {e}")
-        return ""
-
-
 def initialize_data():
     create_collection()
     # Replace with your Excel file path
     excel_file_path = "vstep_data/Chatbot-VSTEP.xlsx"
     chatbot_ai = ChatbotAI(excel_file_path)
     return chatbot_ai
+
+def process_excel_data(excel_path):
+    df_english = pd.read_excel(excel_path, sheet_name=0)
+    df_vietnamese = pd.read_excel(excel_path, sheet_name=1)
+
+    data = []
+    for idx, row in df_english.iterrows():
+        data.append({
+            'id': str(uuid4()),
+            'text': row['Question'],
+            'answer': row['Answer'],
+            'language': 'english'
+        })
+
+    for idx, row in df_vietnamese.iterrows():
+        data.append({
+            'id': str(uuid4()),
+            'text': row['Question'],
+            'answer': row['Answer'],
+            'language': 'vietnamese'
+        })
+
+    batch_size = 100
+    for i in tqdm(range(0, len(data), batch_size)):
+        i_end = min(len(data), i + batch_size)
+        meta_batch = data[i:i_end]
+        ids_batch = [x['id'] for x in meta_batch]
+        texts = [x['text'] for x in meta_batch]
+
+        try:
+            res = genai.embed_content(texts)
+        except:
+            done = False
+            while not done:
+                sleep(5)
+                try:
+                    res = genai.embed_content(texts)
+                    done = True
+                except:
+                    pass
+
+        embeds = [record.embedding for record in res.data]
+        meta_batch = [{'text': x['text'], 'answer': x['answer'], 'language': x['language']} for x in meta_batch]
+        list_batch = list(zip(ids_batch, embeds, meta_batch))
+        points_list = [PointStruct(id=p[0], vector=p[1], payload=p[2]) for p in list_batch]
+
+        vector_db.upsert(
+            collection_name="vstep_data_collection",
+            wait=True,
+            points=points_list
+        )
+
+    return {"message": "Excel data processed successfully"}
+
+def generate_response(query, context, detected_language):
+    primer = (
+        "You are a helpful AI assistant specializing in VSTEP (Vietnamese Standardized Test of English Proficiency) information. "
+        "Use the provided context from the VSTEP dataset to answer the user's query. "
+        "If the question is not related to VSTEP, politely remind the user that you specialize in VSTEP information and offer to help with VSTEP-related questions instead. "
+        "For VSTEP-related questions, use the Excel data to provide a comprehensive and accurate answer. "
+        "Always maintain a friendly and professional tone. If you're unsure about specific information, simply say you don't know. "
+        "Format your response with proper paragraphs and use numbered or bulleted lists where appropriate. "
+        f"The detected language is {detected_language}, so please respond in that language."
+    )
+
+    response = gemini_model.generate_content([
+        {"role": "user", "parts": [
+            f"{primer}\n\nContext:\n{context}\n\nQuestion: {query}"]}
+    ])
+
+    # Process the response to ensure proper formatting
+    processed_response = response.text.replace('\n', '<br>')
+    processed_response = processed_response.replace('•', '<br>•')
+    processed_response = re.sub(r'(\d+)\.\s', r'<br>\1. ', processed_response)
+
+    return processed_response
