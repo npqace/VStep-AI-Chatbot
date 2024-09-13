@@ -55,13 +55,13 @@ class Chatbox {
         if (text1 === "") {
             return;
         }
-
+    
         let msg1 = { name: "User", message: text1 };
         this.messages.push(msg1);
-
-        fetch('http://127.0.0.1:8000/query/', { // Change the URL to match your FastAPI endpoint
+    
+        fetch('http://127.0.0.1:5000/query/', { 
             method: 'POST',
-            body: JSON.stringify({ query: text1 }), // Adjust the body to match the backend's expected format
+            body: JSON.stringify({ query: text1 }), // Ensure the payload matches what the backend expects
             mode: 'cors',
             headers: {
                 'Content-Type': 'application/json'

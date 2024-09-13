@@ -11,6 +11,7 @@ import os
 from dotenv import load_dotenv
 from time import sleep
 import re
+import logging
 
 # Load environment variables
 load_dotenv()
@@ -31,19 +32,18 @@ class ChatbotAI:
     def __init__(self, excel_path):
         self.df_english = pd.read_excel(excel_path, sheet_name=0)
         self.df_vietnamese = pd.read_excel(excel_path, sheet_name=1)
+        logging.info(f"Loaded {len(self.df_english)} English questions and {len(self.df_vietnamese)} Vietnamese questions")
         self.vectorizer_english = TfidfVectorizer()
         self.vectorizer_vietnamese = TfidfVectorizer()
-        self.question_vectors_english = self.vectorizer_english.fit_transform(
-            self.df_english['Question'])
-        self.question_vectors_vietnamese = self.vectorizer_vietnamese.fit_transform(
-            self.df_vietnamese['Question'])
+        self.question_vectors_english = self.vectorizer_english.fit_transform(self.df_english['Question'])
+        self.question_vectors_vietnamese = self.vectorizer_vietnamese.fit_transform(self.df_vietnamese['Question'])
 
     def detect_language(self, text):
-        # Simple language detection based on character set
-        vietnamese_chars = set(
-            'àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệđìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ')
+        vietnamese_chars = set('àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệđìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ')
         if any(char.lower() in vietnamese_chars for char in text):
+            logging.info("Detected language: Vietnamese")
             return 'vietnamese'
+        logging.info("Detected language: English")
         return 'english'
 
     def find_most_similar_question(self, user_question):
@@ -58,9 +58,9 @@ class ChatbotAI:
             question_vectors = self.question_vectors_vietnamese
 
         user_question_vector = vectorizer.transform([user_question])
-        similarities = cosine_similarity(
-            user_question_vector, question_vectors)
+        similarities = cosine_similarity(user_question_vector, question_vectors)
         most_similar_idx = similarities.argmax()
+        logging.info(f"Most similar question index: {most_similar_idx}")
         return df.iloc[most_similar_idx], language
 
     def get_answer(self, user_question):
@@ -156,4 +156,5 @@ def generate_response(query, context, detected_language):
     processed_response = processed_response.replace('•', '<br>•')
     processed_response = re.sub(r'(\d+)\.\s', r'<br>\1. ', processed_response)
 
+    logging.info(f"Generated response: {processed_response}")
     return processed_response
