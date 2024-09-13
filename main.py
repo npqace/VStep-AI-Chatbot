@@ -1,8 +1,6 @@
+from flask import Flask, request, jsonify, render_template
+from flask_cors import CORS
 from vstep_data.data_processor import vector_db, initialize_data, ChatbotAI, process_excel_data, generate_response
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
 import re
 import os
 from dotenv import load_dotenv
@@ -14,62 +12,59 @@ load_dotenv()
 # Get the API key from the environment variable
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
-# Initialize the FastAPI app
-app = FastAPI()
-
-# Serve static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Initialize the Flask app
+app = Flask(__name__)
+CORS(app)
 
 # Setup Jinja2 for templates
-templates = Jinja2Templates(directory="templates")
-
-# Pydantic model for query
-class QueryRequest(BaseModel):
-    query: str
-
-# Pydantic model for document processing
-class DocumentProcessingRequest(BaseModel):
-    excel_path: str
+app.template_folder = "templates"
+app.static_folder = "static"
 
 # Load the Excel data when the app starts
-chatbot_ai = None
+chatbot_ai = initialize_data()
 
-@app.on_event("startup")
-async def startup_event():
-    global chatbot_ai
-    chatbot_ai = initialize_data()
-
-@app.post("/process/")
-async def process_excel_data_endpoint(request: DocumentProcessingRequest):
+@app.route("/process/", methods=["POST"])
+def process_excel_data_endpoint():
     try:
-        result = process_excel_data(request.excel_path)
-        return result
+        data = request.get_json()
+        excel_path = data.get('excel_path')
+        result = process_excel_data(excel_path)
+        return jsonify(result)
     except Exception as e:
         logging.error(f"Error processing Excel data: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return jsonify({"detail": str(e)}), 500
 
-@app.post("/query/")
-async def query_documents(request: QueryRequest):
+@app.route("/query/", methods=["POST"])
+def query_documents():
     try:
+        data = request.get_json()
+        logging.info(f"Received data: {data}")  # Log received data
+        user_query = data.get('query')
+        logging.info(f"User query: {user_query}")
+
         # Check if the query is a greeting
         vietnamese_greeting_pattern = r'\b(xin chào|chào|xin chao|chao)\b'
         english_greeting_pattern = r'\b(hi|hello|hey|greetings)\b'
 
-        if re.search(vietnamese_greeting_pattern, request.query.lower()):
-            return {"response": "Xin chào! Tôi là trợ lý AI chuyên về VSTEP. Tôi có thể giúp gì cho bạn về các câu hỏi liên quan đến VSTEP hôm nay?"}
-        elif re.search(english_greeting_pattern, request.query.lower()):
-            return {"response": "Hello! I'm an AI assistant specializing in VSTEP. How can I help you with your VSTEP-related questions today?"}
+        if re.search(vietnamese_greeting_pattern, user_query.lower()):
+            return jsonify({"response": "Xin chào! Tôi là trợ lý AI chuyên về VSTEP. Tôi có thể giúp gì cho bạn về các câu hỏi liên quan đến VSTEP hôm nay?"})
+        elif re.search(english_greeting_pattern, user_query.lower()):
+            return jsonify({"response": "Hello! I'm an AI assistant specializing in VSTEP. How can I help you with your VSTEP-related questions today?"})
 
         # Get answer from Excel data
-        excel_answer, detected_language = chatbot_ai.get_answer(request.query)
+        excel_answer, detected_language = chatbot_ai.get_answer(user_query)
+        logging.info(f"Excel answer: {excel_answer}, Detected language: {detected_language}")
 
-        response_text = generate_response(request.query, excel_answer, detected_language)
+        response_text = generate_response(user_query, excel_answer, detected_language)
 
-        return {"response": response_text}
+        return jsonify({"response": response_text})
     except Exception as e:
         logging.error(f"Error querying documents: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return jsonify({"detail": str(e)}), 500
 
-@app.get("/")
-async def root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request, "app_description": "VSTEP Q&A Bot"})
+@app.route("/")
+def root():
+    return render_template("index.html", app_description="VSTEP Q&A Bot")
+
+if __name__ == "__main__":
+    app.run(debug=True)
