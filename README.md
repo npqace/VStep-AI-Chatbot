@@ -1,64 +1,62 @@
-# VSTEP Chatbot
+# VSTEP Q&A Bot
 
-This is an AI-powered chatbot application specializing in VSTEP (Vietnamese Standardized Test of English Proficiency) information. The chatbot uses a combination of pre-loaded Excel data and real-time online information to provide comprehensive answers to user queries about VSTEP.
+VSTEP Q&A Bot is a Flask-based web application that provides answers to questions related to the Vietnamese Standardized Test of English Proficiency (VSTEP). It uses natural language processing and machine learning techniques to understand user queries and provide relevant responses based on a pre-processed dataset.
 
 ## Features
 
-- Responds to user queries about VSTEP in both English and Vietnamese
-- Uses a combination of local Excel data and online information for answers
-- Powered by Google's Gemini AI model for natural language processing
-- FastAPI backend for efficient API handling
-- Simple web interface for user interaction
+- Web interface for user interactions
+- Support for both English and Vietnamese languages
+- Automatic language detection
+- Integration with Google's Gemini AI for enhanced response generation
+- Excel data processing for maintaining the question-answer dataset
 
-## Prerequisites
-
-- Python 3.7+
-- FastAPI
-- Pydantic
-- Google GenerativeAI
-- Pandas
-- Scikit-learn
-- BeautifulSoup4
-- Requests
-- python-dotenv
-- Qdrant (for vector database)
-
-## Installation
+## Setup
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/vstep-chatbot.git
-   cd vstep-chatbot
+   git clone https://github.com/npqace/VStep-AI-Chatbot.git
+   cd VStep-AI-Chatbot
    ```
 
-2. Install the required packages:
+2. Install the required dependencies:
    ```
    pip install -r requirements.txt
    ```
 
-3. Set up your environment variables:
+3. Set up environment variables:
    Create a `.env` file in the root directory and add your Gemini API key:
    ```
    GEMINI_API_KEY=your_api_key_here
    ```
 
-4. Prepare your VSTEP data:
-   Place your Excel file (`Chatbot-VSTEP.xlsx`) in the `vstep_data` directory.
+4. Prepare your Excel data:
+   Place your VSTEP Q&A Excel file in the `vstep_data` folder and name it `Chatbot-VSTEP.xlsx`.
+
+5. Run the application:
+   ```
+   python main.py
+   ```
+
+6. Access the web interface at `http://localhost:5000`
 
 ## Usage
 
-1. Start the FastAPI server:
-   ```
-   uvicorn main:app --reload
-   ```
-
-2. Open a web browser and navigate to `http://localhost:8000` to access the chatbot interface.
-
-3. Type your VSTEP-related questions in either English or Vietnamese and receive answers from the AI assistant.
+1. Open the web interface in your browser.
+2. Type your VSTEP-related question in either English or Vietnamese.
+3. The bot will process your query and provide a relevant answer based on the pre-processed dataset.
 
 ## Project Structure
 
-- `main.py`: FastAPI application and main logic
-- `vstep_data/data_processor.py`: Data processing and chatbot AI implementation
-- `static/`: Directory for static files and HTML templates
-- `vstep_data/`: Directory for VSTEP Excel data
+- `main.py`: The main Flask application file
+- `data_processor.py`: Contains data processing and AI logic
+- `templates/`: HTML templates for the web interface
+- `static/`: Static files (CSS, JavaScript) for the web interface
+- `vstep_data/`: Folder containing the Excel dataset
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License.
