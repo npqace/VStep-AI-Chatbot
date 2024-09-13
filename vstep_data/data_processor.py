@@ -22,7 +22,7 @@ GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 configure(api_key=GEMINI_API_KEY)
 
 # Initialize Gemini model
-gemini_model = GenerativeModel('gemini-pro')
+gemini_model = GenerativeModel('gemini-1.5-flash')
 
 # Initialize the Qdrant client
 vector_db = QdrantClient(":memory:")  # In-memory instance for testing

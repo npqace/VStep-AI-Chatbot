@@ -21,7 +21,7 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Setup Jinja2 for templates
-templates = Jinja2Templates(directory="static")
+templates = Jinja2Templates(directory="templates")
 
 # Pydantic model for query
 class QueryRequest(BaseModel):
