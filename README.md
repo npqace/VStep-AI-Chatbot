@@ -27,8 +27,8 @@ This is an AI-powered chatbot application specializing in VSTEP (Vietnamese Stan
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/vstep-chatbot.git
-   cd vstep-chatbot
+   git clone [https://github.com/npqace/vstep-chatbot.git](https://github.com/npqace/VStep-AI-Chatbot.git)
+   cd VStep-AI-Chatbot
    ```
 
 2. Install the required packages:
